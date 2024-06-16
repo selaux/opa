@@ -40,28 +40,29 @@ const (
 )
 
 type testCommandParams struct {
-	verbose      bool
-	explain      *util.EnumFlag
-	errLimit     int
-	outputFormat *util.EnumFlag
-	coverage     bool
-	threshold    float64
-	timeout      time.Duration
-	ignore       []string
-	bundleMode   bool
-	benchmark    bool
-	benchMem     bool
-	runRegex     string
-	count        int
-	target       *util.EnumFlag
-	skipExitZero bool
-	capabilities *capabilitiesFlag
-	schema       *schemaFlags
-	watch        bool
-	stopChan     chan os.Signal
-	output       io.Writer
-	errOutput    io.Writer
-	v1Compatible bool
+	verbose             bool
+	explain             *util.EnumFlag
+	errLimit            int
+	outputFormat        *util.EnumFlag
+	coverage            bool
+	threshold           float64
+	timeout             time.Duration
+	ignore              []string
+	bundleMode          bool
+	benchmark           bool
+	benchMem            bool
+	runRegex            string
+	count               int
+	target              *util.EnumFlag
+	skipExitZero        bool
+	capabilities        *capabilitiesFlag
+	schema              *schemaFlags
+	watch               bool
+	stopChan            chan os.Signal
+	output              io.Writer
+	errOutput           io.Writer
+	v1Compatible        bool
+	strictBuiltinErrors bool
 }
 
 func newTestCommandParams() testCommandParams {
@@ -382,6 +383,7 @@ func compileAndSetupTests(ctx context.Context, testParams testCommandParams, sto
 
 	runner := tester.NewRunner().
 		SetCompiler(compiler).
+		StrictBuiltinErrors(testParams.strictBuiltinErrors).
 		SetStore(store).
 		CapturePrintOutput(true).
 		EnableTracing(testParams.verbose).
@@ -536,6 +538,7 @@ recommended as some updates might cause them to be dropped by OPA.
 	testCommand.Flags().BoolVar(&testParams.benchmark, "bench", false, "benchmark the unit tests")
 	testCommand.Flags().StringVarP(&testParams.runRegex, "run", "r", "", "run only test cases matching the regular expression.")
 	testCommand.Flags().BoolVarP(&testParams.watch, "watch", "w", false, "watch command line files for changes")
+	testCommand.Flags().BoolVarP(&testParams.strictBuiltinErrors, "strict-builtin-errors", "", false, "treat the first built-in function error encountered as fatal")
 
 	// Shared flags
 	addBundleModeFlag(testCommand.Flags(), &testParams.bundleMode, false)

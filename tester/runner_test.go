@@ -611,7 +611,7 @@ func TestRunnerWithCustomBuiltin(t *testing.T) {
 	})
 }
 
-func TestRunnerWithBuiltinErrors(t *testing.T) {
+func TestRunnerWithStrictBuiltinErrors(t *testing.T) {
 	const ruleTemplate = `package test
 	test_json_parsing {
       x := json.unmarshal("%s")
@@ -619,21 +619,21 @@ func TestRunnerWithBuiltinErrors(t *testing.T) {
 	}`
 
 	testCases := []struct {
-		desc          string
-		json          string
-		builtinErrors bool
-		wantErr       bool
+		desc                string
+		json                string
+		strictBuiltinErrors bool
+		wantErr             bool
 	}{
 		{
-			desc:          "Valid JSON with flag enabled does not raise an error",
-			json:          `{\"test\": 123}`,
-			builtinErrors: true,
+			desc:                "Valid JSON with flag enabled does not raise an error",
+			json:                `{\"test\": 123}`,
+			strictBuiltinErrors: true,
 		},
 		{
-			desc:          "Invalid JSON with flag enabled raises an error",
-			json:          `test: 123`,
-			builtinErrors: true,
-			wantErr:       true,
+			desc:                "Invalid JSON with flag enabled raises an error",
+			json:                `test: 123`,
+			strictBuiltinErrors: true,
+			wantErr:             true,
 		},
 		{
 			desc: "Invalid JSON with flag disabled does not raise an error",
@@ -660,7 +660,7 @@ func TestRunnerWithBuiltinErrors(t *testing.T) {
 					NewRunner().
 					SetStore(store).
 					SetModules(modules).
-					RaiseBuiltinErrors(tc.builtinErrors)
+					StrictBuiltinErrors(tc.strictBuiltinErrors)
 
 				ch, err := runner.RunTests(ctx, txn)
 				if err != nil {

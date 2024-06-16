@@ -118,7 +118,7 @@ type Runner struct {
 	cover                 topdown.QueryTracer
 	trace                 bool
 	enablePrintStatements bool
-	raiseBuiltinErrors    bool
+	strictBuiltinErrors   bool
 	runtime               *ast.Term
 	timeout               time.Duration
 	modules               map[string]*ast.Module
@@ -141,10 +141,10 @@ func (r *Runner) SetCompiler(compiler *ast.Compiler) *Runner {
 	return r
 }
 
-// RaiseBuiltinErrors sets the runner to raise errors encountered by builtins
+// StrictBuiltinErrors sets the runner to raise the first error encountered by builtins
 // such as parsing input.
-func (r *Runner) RaiseBuiltinErrors(enabled bool) *Runner {
-	r.raiseBuiltinErrors = enabled
+func (r *Runner) StrictBuiltinErrors(enabled bool) *Runner {
+	r.strictBuiltinErrors = enabled
 	return r
 }
 
@@ -469,7 +469,6 @@ func (r *Runner) runTest(ctx context.Context, txn storage.Transaction, mod *ast.
 	}
 
 	printbuf := bytes.NewBuffer(nil)
-	var builtinErrors []topdown.Error
 	rg := rego.New(
 		rego.Store(r.store),
 		rego.Transaction(txn),
@@ -479,7 +478,7 @@ func (r *Runner) runTest(ctx context.Context, txn storage.Transaction, mod *ast.
 		rego.Runtime(r.runtime),
 		rego.Target(r.target),
 		rego.PrintHook(topdown.NewPrintHook(printbuf)),
-		rego.BuiltinErrorList(&builtinErrors),
+		rego.StrictBuiltinErrors(r.strictBuiltinErrors),
 	)
 
 	// Register custom builtins on rego instance
@@ -501,12 +500,6 @@ func (r *Runner) runTest(ctx context.Context, txn storage.Transaction, mod *ast.
 	// If there was an error other than errors from builtins, prefer that error.
 	if err != nil {
 		tr.Error = err
-	} else if r.raiseBuiltinErrors && len(builtinErrors) > 0 {
-		if len(builtinErrors) == 1 {
-			tr.Error = &builtinErrors[0]
-		} else {
-			tr.Error = fmt.Errorf("%v", builtinErrors)
-		}
 	}
 
 	var stop bool

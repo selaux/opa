@@ -1547,3 +1547,75 @@ test_l if {
 		}
 	}
 }
+
+func TestWithBuiltinErrors(t *testing.T) {
+	files := map[string]string{
+		"/test.rego": "package test\ntest_success if {\n  1 == 1\n}\ntest_error if {\n  1 / 0\n}\ntest_fail if {\n  1 != 1\n}",
+	}
+
+	testCases := []struct {
+		note                string
+		strictBuiltinErrors bool
+		expected            []string
+	}{
+		{
+			note:                "strict builtin errors disabled",
+			strictBuiltinErrors: false,
+			expected: []string{
+				"data.test.test_error: FAIL",
+				"data.test.test_fail: FAIL",
+				"PASS: 1/3",
+				"FAIL: 2/3",
+			},
+		},
+		{
+			note:                "strict builtin errors enabled",
+			strictBuiltinErrors: true,
+			expected: []string{
+				"data.test.test_error: ERROR",
+				"data.test.test_fail: FAIL",
+				"PASS: 1/3",
+				"ERROR: 1/3",
+				"FAIL: 1/3",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.note, func(t *testing.T) {
+			test.WithTempFS(files, func(root string) {
+				var buf bytes.Buffer
+				var errBuf bytes.Buffer
+
+				testParams := newTestCommandParams()
+				testParams.v1Compatible = true
+				testParams.count = 1
+				testParams.strictBuiltinErrors = tc.strictBuiltinErrors
+				testParams.output = &buf
+				testParams.errOutput = &errBuf
+
+				exitCode, _ := opaTest([]string{root}, testParams)
+				if exitCode != 2 {
+					t.Fatalf("unexpected exit code: %d", exitCode)
+				}
+
+				if errBuf.Len() > 0 {
+					t.Fatalf("expected no output but got:\n\n%q", errBuf.String())
+				}
+
+				for _, expectedLine := range tc.expected {
+					var line string
+					for _, actualLine := range strings.Split(buf.String(), "\n") {
+						if strings.Contains(actualLine, expectedLine) {
+							line = actualLine
+						}
+					}
+
+					if line == "" {
+						t.Fatalf("expected output to contain a line containing:\n\n%s\n\nbut got:\n\n%s", expectedLine, buf.String())
+					}
+				}
+			})
+		})
+	}
+}
